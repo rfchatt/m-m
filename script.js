@@ -1,699 +1,398 @@
-// Initialization
 const { jsPDF } = window.jspdf;
-
-// Global variables
 let currentDate = new Date();
 currentDate.setHours(0, 0, 0, 0);
-let allData = JSON.parse(localStorage.getItem("commercialData")) || {};
 let products = [];
 let credits = [];
+let allData = JSON.parse(localStorage.getItem("commercialData")) || {};
 
-// Utility functions
+// --- Initialization ---
+document.addEventListener('DOMContentLoaded', function() {
+    setupFormEventListeners();
+    setupTabEventListeners();
+    setupMarginInputListeners();
+    loadDayData(currentDate);
+
+    // Initialize Datepicker
+    $("#datepicker").datepicker({
+        language: "fr",
+        autoClose: true,
+        dateFormat: "dd-mm-yyyy",
+        onSelect: function(formattedDate) {
+            const parts = formattedDate.split("-");
+            const selectedDate = new Date(parts[2], parts[1] - 1, parts[0]);
+            selectedDate.setHours(0, 0, 0, 0);
+            loadDayData(selectedDate);
+        }
+    });
+
+    $("#calendarTrigger").click(function() {
+        $("#datepicker").data("datepicker").show();
+    });
+});
+
+// --- Date Helpers ---
 function formatDate(date) {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  return `${day}-${month}-${year}`;
+    const d = String(date.getDate()).padStart(2, "0");
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    return `${d}-${m}-${date.getFullYear()}`;
 }
 
 function formatDateForDisplay(date) {
-  const options = {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  };
-  return date.toLocaleDateString("fr-FR", options);
-}
-
-// Margin calculation functions
-function calculateMargin() {
-  // Récupération des valeurs
-  const yesterdayCash =
-    parseFloat(document.getElementById("yesterdayCash").value) || 0;
-  const todayCash =
-    parseFloat(document.getElementById("todayCash").value) || 0;
-  const yesterdayDeler =
-    parseFloat(document.getElementById("yesterdayDeler").value) || 0;
-
-  // Recharges
-  const inwiRecharge =
-    parseFloat(document.getElementById("inwiRecharge").value) || 0;
-  const orangeRecharge =
-    parseFloat(document.getElementById("orangeRecharge").value) || 0;
-  const iamRecharge =
-    parseFloat(document.getElementById("iamRecharge").value) || 0;
-  const totalRecharges = inwiRecharge + orangeRecharge + iamRecharge;
-
-  // Restes Deler
-  const remainingInwi =
-    parseFloat(document.getElementById("remainingInwi").value) || 0;
-  const remainingOrange =
-    parseFloat(document.getElementById("remainingOrange").value) || 0;
-  const remainingIAM =
-    parseFloat(document.getElementById("remainingIAM").value) || 0;
-  const totalRemaining = remainingInwi + remainingOrange + remainingIAM;
-  const remainingCashe =
-    parseFloat(document.getElementById("remainingCashe").value) || 0;
-
-  // Statistiques
-  const totalSales =
-    parseFloat(
-      document.getElementById("totalSales").textContent.replace(" DH", "")
-    ) || 0;
-  const pendingCredits =
-    parseFloat(
-      document
-        .getElementById("pendingCredits")
-        .textContent.replace(" DH", "")
-    ) || 0;
-
-  // Calcul avec inversion du signe
-  const margin =
-    -1 *
-    (yesterdayDeler +
-      totalRecharges -
-      totalRemaining +
-      totalSales -
-      pendingCredits -
-      todayCash +
-      yesterdayCash) + remainingCashe;
-
-  // Affichage
-  document.getElementById("marginResult").textContent =
-    margin.toFixed(2) + " DH";
-
-  // Sauvegarde
-  saveMarginData({
-    yesterdayCash,
-    todayCash,
-    yesterdayDeler,
-    recharges: {
-      inwi: inwiRecharge,
-      orange: orangeRecharge,
-      iam: iamRecharge,
-      total: totalRecharges,
-    },
-    remaining: {
-      inwi: remainingInwi,
-      orange: remainingOrange,
-      iam: remainingIAM,
-      total: totalRemaining,
-    },
-    totalSales,
-    pendingCredits,
-    margin,
-    remainingCashe
-  });
-}
-
-function saveMarginData(data) {
-  const dateKey = formatDate(currentDate);
-  if (!allData[dateKey]) {
-    allData[dateKey] = {};
-  }
-  allData[dateKey].marginData = data;
-  localStorage.setItem("commercialData", JSON.stringify(allData));
-}
-
-function loadMarginData() {
-  const dateKey = formatDate(currentDate);
-  if (allData[dateKey] && allData[dateKey].marginData) {
-    const marginData = allData[dateKey].marginData;
-    document.getElementById("yesterdayCash").value =
-      marginData.yesterdayCash;
-    document.getElementById("todayCash").value = marginData.todayCash;
-    document.getElementById("yesterdayDeler").value =
-      marginData.yesterdayDeler;
-    document.getElementById("inwiRecharge").value =
-      marginData.recharges.inwi;
-    document.getElementById("orangeRecharge").value =
-      marginData.recharges.orange;
-    document.getElementById("iamRecharge").value =
-      marginData.recharges.iam;
-    document.getElementById("remainingInwi").value =
-      marginData.remaining.inwi;
-    document.getElementById("remainingOrange").value =
-      marginData.remaining.orange;
-    document.getElementById("remainingIAM").value =
-      marginData.remaining.iam;
-    document.getElementById("remainingCashe").value =
-      marginData.remainingCashe;
-    document.getElementById("marginResult").textContent =
-      marginData.margin.toFixed(2) + " DH";
-  }
-}
-
-function resetMarginInputs() {
-  document.getElementById("yesterdayCash").value = "";
-  document.getElementById("todayCash").value = "";
-  document.getElementById("yesterdayDeler").value = "";
-  document.getElementById("inwiRecharge").value = "";
-  document.getElementById("orangeRecharge").value = "";
-  document.getElementById("iamRecharge").value = "";
-  document.getElementById("remainingInwi").value = "";
-  document.getElementById("remainingOrange").value = "";
-  document.getElementById("remainingIAM").value = "";
-  document.getElementById("remainingCashe").value = "";
-  document.getElementById("marginResult").textContent = "0.00 DH";
-}
-
-// Main data functions
-function loadDayData(date) {
-  currentDate = date;
-  updateDateDisplay();
-
-  const dateKey = formatDate(date);
-  if (!allData[dateKey]) {
-    allData[dateKey] = {
-      products: [],
-      credits: [],
-      marginData: null,
-    };
-  }
-
-  // Reset margin fields when changing days
-  resetMarginInputs();
-
-  products = allData[dateKey].products || [];
-  credits = allData[dateKey].credits || [];
-
-  renderProducts();
-  renderCredits();
-  updateStats();
-  loadMarginData();
-}
-
-function changeDay(days) {
-  const newDate = new Date(currentDate);
-  newDate.setDate(newDate.getDate() + days);
-  loadDayData(newDate);
+    return date.toLocaleDateString("ar-AR", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+    });
 }
 
 function updateDateDisplay() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dd = document.getElementById("currentDayDisplay");
+    dd.textContent = formatDateForDisplay(currentDate);
+    document.getElementById("currentDate").textContent = "Système: " + formatDate(currentDate);
+    currentDate.getTime() === today.getTime() ? dd.classList.add("today-highlight") : dd.classList.remove("today-highlight");
+}
 
-  // Update displayed date
-  const dayDisplay = document.getElementById("currentDayDisplay");
-  dayDisplay.textContent = formatDateForDisplay(currentDate);
+function changeDay(days) {
+    saveMarginInputs();
+    const nd = new Date(currentDate);
+    nd.setDate(nd.getDate() + days);
+    loadDayData(nd);
+}
 
-  // Update system date
-  document.getElementById("currentDate").textContent =
-    "Système: " + formatDate(currentDate);
-
-  // Highlight if today
-  if (currentDate.getTime() === today.getTime()) {
-    dayDisplay.classList.add("today-highlight");
-  } else {
-    dayDisplay.classList.remove("today-highlight");
-  }
+// --- Data Management ---
+function loadDayData(date) {
+    currentDate = date;
+    updateDateDisplay();
+    const dateKey = formatDate(date);
+    
+    if (!allData[dateKey]) allData[dateKey] = { products: [], credits: [], marginData: null };
+    
+    resetMarginInputs();
+    products = allData[dateKey].products || [];
+    credits = allData[dateKey].credits || [];
+    
+    renderProducts();
+    renderCredits();
+    updateStats();
+    loadMarginData();
 }
 
 function saveData() {
-  const dateKey = formatDate(currentDate);
-  allData[dateKey] = {
-    products: products,
-    credits: credits,
-  };
-
-  localStorage.setItem("commercialData", JSON.stringify(allData));
-  document.getElementById("backupStatus").textContent =
-    "Données mises à jour - " + new Date().toLocaleTimeString();
+    const dateKey = formatDate(currentDate);
+    const currentMarginData = allData[dateKey]?.marginData || null;
+    allData[dateKey] = { products, credits, marginData: currentMarginData };
+    localStorage.setItem("commercialData", JSON.stringify(allData));
+    document.getElementById("backupStatus").textContent = "Données mises à jour - " + new Date().toLocaleTimeString();
 }
 
-// Product functions
-function renderProducts() {
-  const productList = document.getElementById("productList");
+// --- Margin Calculations ---
+function calculateMargin() {
+    const yesterdayCash = parseFloat(document.getElementById("yesterdayCash").value) || 0;
+    const todayCash = parseFloat(document.getElementById("todayCash").value) || 0;
+    const yesterdayDeler = parseFloat(document.getElementById("yesterdayDeler").value) || 0;
+    const inwiRecharge = parseFloat(document.getElementById("inwiRecharge").value) || 0;
+    const orangeRecharge = parseFloat(document.getElementById("orangeRecharge").value) || 0;
+    const iamRecharge = parseFloat(document.getElementById("iamRecharge").value) || 0;
+    const totalRecharges = inwiRecharge + orangeRecharge + iamRecharge;
+    const remainingInwi = parseFloat(document.getElementById("remainingInwi").value) || 0;
+    const remainingOrange = parseFloat(document.getElementById("remainingOrange").value) || 0;
+    const remainingIAM = parseFloat(document.getElementById("remainingIAM").value) || 0;
+    const totalRemaining = remainingInwi + remainingOrange + remainingIAM;
+    const remainingCashe = parseFloat(document.getElementById("remainingCashe").value) || 0;
+    const totalSales = parseFloat(document.getElementById("totalSales").textContent.replace(" DH", "")) || 0;
+    const pendingCredits = parseFloat(document.getElementById("pendingCredits").textContent.replace(" DH", "")) || 0;
 
-  if (products.length === 0) {
-    productList.innerHTML = `
-      <div class="empty-state">
-        <i class="fas fa-box-open"></i>
-        <p>Aucun produit enregistré</p>
-      </div>
-    `;
-    return;
-  }
+    const totalDealersToday = remainingInwi + remainingOrange + remainingIAM;
+    document.getElementById("totalDealersToday").textContent = `مجموع الباقي في الديلرات اليوم : ${totalDealersToday.toFixed(2)} DH`;
 
-  productList.innerHTML = "";
+    const margin = -1 * (yesterdayDeler + totalRecharges - totalRemaining + totalSales - pendingCredits - todayCash + yesterdayCash) + remainingCashe;
 
-  products.forEach((product) => {
-    const item = document.createElement("div");
-    item.className = "item";
-    item.innerHTML = `
-      <div class="item-info">
-        <div class="item-name">${product.name}</div>
-        <div class="item-details">${
-          product.price
-        } DH - ${formatDate(new Date(product.date))}</div>
-      </div>
-      <div class="item-actions">
-        <button class="btn-danger" data-id="${
-          product.id
-        }" data-type="product">
-          <i class="fas fa-trash-alt"></i> Supprimer
-        </button>
-      </div>
-    `;
-    productList.appendChild(item);
-  });
+    const marginResult = document.getElementById("marginResult");
+    marginResult.textContent = (margin < 0 ? "" : "+") + margin.toFixed(2) + " DH ";
+    marginResult.style.color = margin < 0 ? "var(--red)" : "var(--green)";
+
+    const dateKey = formatDate(currentDate);
+    allData[dateKey].marginData = { 
+        yesterdayCash, todayCash, yesterdayDeler, 
+        recharges: { inwi: inwiRecharge, orange: orangeRecharge, iam: iamRecharge, total: totalRecharges }, 
+        remaining: { inwi: remainingInwi, orange: remainingOrange, iam: remainingIAM, total: totalRemaining, cashe: remainingCashe }, 
+        totalSales, pendingCredits, margin, totalDealersToday 
+    };
+    
+    localStorage.setItem("commercialData", JSON.stringify(allData));
+    document.getElementById("backupStatus").textContent = "Données mises à jour - " + new Date().toLocaleTimeString();
+    return margin;
 }
 
-function deleteProduct(id) {
-  if (confirm("Supprimer ce produit ?")) {
-    products = products.filter((p) => p.id !== id);
-    saveData();
-    renderProducts();
-    updateStats();
-  }
+function saveMarginInputs() {
+    const dateKey = formatDate(currentDate);
+    if (!allData[dateKey]) allData[dateKey] = { products: [], credits: [], marginData: null };
+    
+    const existingCalculation = allData[dateKey].marginData?.margin || 0;
+    const existingDealersTotal = allData[dateKey].marginData?.totalDealersToday || 0;
+    
+    allData[dateKey].marginData = {
+        yesterdayCash: parseFloat(document.getElementById("yesterdayCash").value) || 0,
+        todayCash: parseFloat(document.getElementById("todayCash").value) || 0,
+        yesterdayDeler: parseFloat(document.getElementById("yesterdayDeler").value) || 0,
+        recharges: { 
+            inwi: parseFloat(document.getElementById("inwiRecharge").value) || 0, 
+            orange: parseFloat(document.getElementById("orangeRecharge").value) || 0, 
+            iam: parseFloat(document.getElementById("iamRecharge").value) || 0, 
+            total: 0 
+        },
+        remaining: { 
+            inwi: parseFloat(document.getElementById("remainingInwi").value) || 0, 
+            orange: parseFloat(document.getElementById("remainingOrange").value) || 0, 
+            iam: parseFloat(document.getElementById("remainingIAM").value) || 0, 
+            cashe: parseFloat(document.getElementById("remainingCashe").value) || 0, 
+            total: 0 
+        },
+        margin: existingCalculation, 
+        totalDealersToday: existingDealersTotal,
+        totalSales: parseFloat(document.getElementById("totalSales").textContent.replace(" DH", "")) || 0,
+        pendingCredits: parseFloat(document.getElementById("pendingCredits").textContent.replace(" DH", "")) || 0,
+        lastUpdated: new Date().toISOString()
+    };
+    
+    allData[dateKey].marginData.recharges.total = allData[dateKey].marginData.recharges.inwi + allData[dateKey].marginData.recharges.orange + allData[dateKey].marginData.recharges.iam;
+    allData[dateKey].marginData.remaining.total = allData[dateKey].marginData.remaining.inwi + allData[dateKey].marginData.remaining.orange + allData[dateKey].marginData.remaining.iam;
+    
+    localStorage.setItem("commercialData", JSON.stringify(allData));
 }
 
-// Credit functions
-function renderCredits() {
-  const creditList = document.getElementById("creditList");
-
-  if (credits.length === 0) {
-    creditList.innerHTML = `
-      <div class="empty-state">
-        <i class="fas fa-hand-holding-usd"></i>
-        <p>Aucun crédit enregistré</p>
-      </div>
-    `;
-    return;
-  }
-
-  creditList.innerHTML = "";
-
-  credits.forEach((credit) => {
-    const item = document.createElement("div");
-    item.className = "item";
-    item.innerHTML = `
-      <div class="item-info">
-        <div class="item-name">${credit.borrower} - ${
-      credit.type
-    }</div>
-        <div class="item-details">${
-          credit.amount
-        } DH - ${formatDate(new Date(credit.date))}</div>
-      </div>
-      <div class="item-actions">
-        <button class="${
-          credit.paid ? "btn-warning" : "btn-success"
-        }" 
-                data-id="${
-                  credit.id
-                }" data-type="credit" data-action="toggle">
-          <i class="fas fa-${
-            credit.paid ? "undo" : "check"
-          }"></i> ${
-      credit.paid ? "Marquer impayé" : "Marquer payé"
+function loadMarginData() {
+    const dateKey = formatDate(currentDate);
+    if (!allData[dateKey] || !allData[dateKey].marginData) return;
+    const marginData = allData[dateKey].marginData;
+    const updateField = (id, value) => { 
+        const el = document.getElementById(id); 
+        if (el && value !== undefined) el.value = value; 
+    };
+    
+    updateField("yesterdayCash", marginData.yesterdayCash); 
+    updateField("todayCash", marginData.todayCash); 
+    updateField("yesterdayDeler", marginData.yesterdayDeler);
+    updateField("inwiRecharge", marginData.recharges?.inwi); 
+    updateField("orangeRecharge", marginData.recharges?.orange); 
+    updateField("iamRecharge", marginData.recharges?.iam);
+    updateField("remainingInwi", marginData.remaining?.inwi); 
+    updateField("remainingOrange", marginData.remaining?.orange); 
+    updateField("remainingIAM", marginData.remaining?.iam); 
+    updateField("remainingCashe", marginData.remaining?.cashe);
+    
+    if (marginData.margin !== undefined) {
+        document.getElementById("marginResult").textContent = marginData.margin.toFixed(2) + " DH";
     }
-        </button>
-        <button class="btn-danger" data-id="${
-          credit.id
-        }" data-type="credit" data-action="delete">
-          <i class="fas fa-trash-alt"></i> Supprimer
-        </button>
-      </div>
-      <span class="badge ${
-        credit.paid ? "badge-paid" : "badge-pending"
-      }">
-        <i class="fas fa-${
-          credit.paid ? "check-circle" : "exclamation-circle"
-        }"></i> ${credit.paid ? "Payé" : "Impayé"}
-      </span>
-    `;
-    creditList.appendChild(item);
-  });
 }
 
-function toggleCreditStatus(id) {
-  credits = credits.map((c) => {
-    if (c.id === id) {
-      return { ...c, paid: !c.paid };
-    }
-    return c;
-  });
-  saveData();
-  renderCredits();
-  updateStats();
-}
-
-function deleteCredit(id) {
-  if (confirm("Supprimer ce crédit ?")) {
-    credits = credits.filter((c) => c.id !== id);
-    saveData();
-    renderCredits();
-    updateStats();
-  }
-}
-
-// Stats functions
-function updateStats() {
-  // Sales
-  const totalSales = products.reduce(
-    (sum, p) => sum + parseFloat(p.price),
-    0
-  );
-  document.getElementById("totalSales").textContent =
-    totalSales.toFixed(2) + " DH";
-
-  // Credits
-  const totalCredits = credits.reduce(
-    (sum, c) => sum + parseFloat(c.amount),
-    0
-  );
-  const pendingCredits = credits.reduce(
-    (sum, c) => (!c.paid ? sum + parseFloat(c.amount) : sum),
-    0
-  );
-
-  document.getElementById("totalCredits").textContent =
-    totalCredits.toFixed(2) + " DH";
-  document.getElementById("pendingCredits").textContent =
-    pendingCredits.toFixed(2) + " DH";
-}
-
-// PDF Export function
-function exportToPDF() {
-  const doc = new jsPDF();
-
-  // Header
-  doc.setFontSize(18);
-  doc.setTextColor(40);
-  doc.text(
-    "Rapport Commercial - " + formatDateForDisplay(currentDate),
-    105,
-    15,
-    { align: "center" }
-  );
-
-  doc.setFontSize(12);
-  doc.setTextColor(100);
-  doc.text(`Généré le: ${formatDate(new Date())}`, 105, 22, {
-    align: "center",
-  });
-
-  // Sales section
-  doc.setFontSize(14);
-  doc.setTextColor(40);
-  doc.text("Détail des Ventes", 14, 35);
-
-  const ventesData = products.map((p) => [
-    p.name,
-    `${p.price} DH`,
-    formatDate(new Date(p.date)),
-  ]);
-
-  doc.autoTable({
-    head: [["Produit", "Prix", "Date"]],
-    body: ventesData,
-    startY: 40,
-    theme: "grid",
-    headStyles: {
-      fillColor: [41, 128, 185],
-      textColor: 255,
-      fontStyle: "bold",
-    },
-    alternateRowStyles: {
-      fillColor: [245, 245, 245],
-    },
-    margin: { top: 40 },
-  });
-
-  // Credits section
-  doc.setFontSize(14);
-  doc.text("Détail des Crédits", 14, doc.autoTable.previous.finalY + 20);
-
-  const creditsData = credits.map((c) => [
-    c.borrower,
-    c.type,
-    `${c.amount} DH`,
-    c.paid ? "Payé" : "Impayé",
-    formatDate(new Date(c.date)),
-  ]);
-
-  doc.autoTable({
-    head: [["Client", "Type", "Montant", "Statut", "Date"]],
-    body: creditsData,
-    startY: doc.autoTable.previous.finalY + 25,
-    theme: "grid",
-    headStyles: {
-      fillColor: [142, 68, 173],
-      textColor: 255,
-      fontStyle: "bold",
-    },
-    columnStyles: {
-      3: { cellWidth: "auto", halign: "center" },
-    },
-    didDrawCell: (data) => {
-      if (data.column.index === 3 && data.cell.raw === "Impayé") {
-        doc.setTextColor(231, 76, 60);
-      } else if (data.column.index === 3 && data.cell.raw === "Payé") {
-        doc.setTextColor(39, 174, 96);
-      }
-    },
-    alternateRowStyles: {
-      fillColor: [245, 245, 245],
-    },
-  });
-
-  // Stats section
-  doc.setFontSize(14);
-  doc.text(
-    "Statistiques Globales",
-    14,
-    doc.autoTable.previous.finalY + 20
-  );
-
-  const totalVentes = products.reduce(
-    (sum, p) => sum + parseFloat(p.price),
-    0
-  );
-  const totalCredits = credits.reduce(
-    (sum, c) => sum + parseFloat(c.amount),
-    0
-  );
-  const creditsImpayes = credits.reduce(
-    (sum, c) => (!c.paid ? sum + parseFloat(c.amount) : sum),
-    0
-  );
-
-  doc.autoTable({
-    body: [
-      ["Total Ventes", `${totalVentes.toFixed(2)} DH`],
-      ["Crédits Impayés", `${creditsImpayes.toFixed(2)} DH`]
-    ],
-    startY: doc.autoTable.previous.finalY + 25,
-    theme: "plain",
-    styles: {
-      fontSize: 12,
-      cellPadding: 6,
-    },
-    columnStyles: {
-      0: { fontStyle: "bold", cellWidth: "auto" },
-      1: { fontStyle: "bold", halign: "right" },
-    },
-    headStyles: {
-      fillColor: [52, 152, 219],
-      textColor: 255,
-    },
-    margin: { top: 20 },
-  });
-
-  // Margin section
-  doc.setFontSize(14);
-  doc.text("Calcul de Marge", 14, doc.autoTable.previous.finalY + 20);
-
-  // Get margin data
-  const yesterdayCash =
-    parseFloat(document.getElementById("yesterdayCash").value) || 0;
-  const todayCash =
-    parseFloat(document.getElementById("todayCash").value) || 0;
-  const yesterdayDeler =
-    parseFloat(document.getElementById("yesterdayDeler").value) || 0;
-  const inwiRecharge =
-    parseFloat(document.getElementById("inwiRecharge").value) || 0;
-  const orangeRecharge =
-    parseFloat(document.getElementById("orangeRecharge").value) || 0;
-  const iamRecharge =
-    parseFloat(document.getElementById("iamRecharge").value) || 0;
-  const remainingInwi =
-    parseFloat(document.getElementById("remainingInwi").value) || 0;
-  const remainingOrange =
-    parseFloat(document.getElementById("remainingOrange").value) || 0;
-  const remainingIAM =
-    parseFloat(document.getElementById("remainingIAM").value) || 0;
-  const remainingCashe =
-    parseFloat(document.getElementById("remainingCashe").value) || 0;
-  const marginResult =
-    document.getElementById("marginResult").textContent;
-
-  doc.autoTable({
-    body: [
-      ["Fond de caisse d'hier", `${yesterdayCash.toFixed(2)} DH`],
-      ["Fond de caisse d'aujourd'hui", `${todayCash.toFixed(2)} DH`],
-      ["Total des 3 Dealer d'hier", `${yesterdayDeler.toFixed(2)} DH`],
-      ["Total des 3 Dealer d'aujourd'hui", `${(remainingIAM+remainingInwi+remainingOrange).toFixed(2)} DH`],
-      ["", ""],
-      ["Recharge Inwi", `${inwiRecharge.toFixed(2)} DH`],
-      ["Recharge Orange", `${orangeRecharge.toFixed(2)} DH`],
-      ["Recharge IAM", `${iamRecharge.toFixed(2)} DH`],
-      ["", ""],
-      ["Reste Inwi", `${remainingInwi.toFixed(2)} DH`],
-      ["Reste Orange", `${remainingOrange.toFixed(2)} DH`],
-      ["Reste IAM", `${remainingIAM.toFixed(2)} DH`],
-      ["", "___________"],
-      ["Reste d'Argent", `${remainingCashe.toFixed(2)} DH`],
-      ["Marge Calculée", marginResult],
-    ],
-    startY: doc.autoTable.previous.finalY + 25,
-    theme: "plain",
-    styles: {
-      fontSize: 12,
-      cellPadding: 6,
-    },
-    columnStyles: {
-      0: { fontStyle: "bold", cellWidth: "auto" },
-      1: { fontStyle: "bold", halign: "right" },
-    },
-    headStyles: {
-      fillColor: [155, 89, 182],
-      textColor: 255,
-    },
-    didDrawCell: (data) => {
-      if (data.column.index === 1 && data.row.index === 14) {
-        const marginValue = parseFloat(marginResult.replace(" DH", ""));
-        doc.setTextColor(marginValue >= 0 ? "#4CAF50" : "#F44336");
-      }
-    },
-    margin: { top: 20 },
-  });
-
-  // Footer
-  doc.setFontSize(10);
-  doc.setTextColor(100);
-  doc.text(
-    `© ${new Date().getFullYear()} - Gestion Commerciale - Abderrafie Chate - Page ${doc.internal.getNumberOfPages()}`,
-    105,
-    285,
-    { align: "center" }
-  );
-
-  // Save PDF
-  doc.save(`rapport_commercial_${formatDate(currentDate)}.pdf`);
-
-  // Update status
-  document.getElementById("backupStatus").textContent =
-    "PDF généré avec succès - " + new Date().toLocaleString();
-}
-
-// Event listeners
-function initializeEventListeners() {
-  // Calendar initialization
-  const datepicker = $("#datepicker").datepicker({
-    language: "fr",
-    autoClose: true,
-    dateFormat: "dd-mm-yyyy",
-    onSelect: function (formattedDate) {
-      const parts = formattedDate.split("-");
-      const selectedDate = new Date(parts[2], parts[1] - 1, parts[0]);
-      selectedDate.setHours(0, 0, 0, 0);
-      loadDayData(selectedDate);
-    },
-  });
-
-  $("#calendarTrigger").click(function () {
-    datepicker.data("datepicker").show();
-  });
-
-  // Tab management
-  const tabs = document.querySelectorAll(".tab");
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      tabs.forEach((t) => t.classList.remove("active"));
-      tab.classList.add("active");
-
-      document.querySelectorAll(".tab-content").forEach((content) => {
-        content.classList.remove("active");
-      });
-      document.getElementById(tab.dataset.tab).classList.add("active");
+function resetMarginInputs() {
+    ["yesterdayCash","todayCash","yesterdayDeler","inwiRecharge","orangeRecharge","iamRecharge","remainingInwi","remainingOrange","remainingIAM","remainingCashe"].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = "";
     });
-  });
-
-  // Product form
-  document.getElementById("productForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    const productName = document.getElementById("productName").value.trim();
-    const productPrice = parseFloat(
-      document.getElementById("productPrice").value
-    );
-
-    if (productName && !isNaN(productPrice)) {
-      products.push({
-        id: Date.now(),
-        name: productName,
-        price: productPrice.toFixed(2),
-        sold: true,
-        date: currentDate.toISOString(),
-      });
-      saveData();
-      renderProducts();
-      updateStats();
-      this.reset();
-    }
-  });
-
-  // Credit form
-  document.getElementById("creditForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    const borrowerName = document.getElementById("borrowerName").value.trim();
-    const creditType = document.getElementById("creditType").value.trim();
-    const creditAmount = parseFloat(
-      document.getElementById("creditAmount").value
-    );
-
-    if (borrowerName && creditType && !isNaN(creditAmount)) {
-      credits.push({
-        id: Date.now(),
-        borrower: borrowerName,
-        type: creditType,
-        amount: creditAmount.toFixed(2),
-        paid: false,
-        date: currentDate.toISOString(),
-      });
-      saveData();
-      renderCredits();
-      updateStats();
-      this.reset();
-    }
-  });
-
-  // Action buttons
-  document.addEventListener("click", function (e) {
-    if (e.target.tagName === "BUTTON" || e.target.closest("button")) {
-      const button =
-        e.target.tagName === "BUTTON" ? e.target : e.target.closest("button");
-      const id = parseInt(button.dataset.id);
-      const type = button.dataset.type;
-      const action = button.dataset.action;
-
-      if (type === "product") {
-        deleteProduct(id);
-      } else if (type === "credit") {
-        if (action === "toggle") {
-          toggleCreditStatus(id);
-        } else if (action === "delete") {
-          deleteCredit(id);
-        }
-      }
-    }
-  });
+    document.getElementById("marginResult").textContent = "0.00 DH";
 }
 
-// Initialization on load
-document.addEventListener("DOMContentLoaded", function () {
-  initializeEventListeners();
-  loadDayData(currentDate);
-});
+// --- UI Rendering ---
+function renderProducts() {
+    const pl = document.getElementById("productList");
+    if (!products.length) { 
+        pl.innerHTML = `<div class="empty-state"><i class="fas fa-box-open"></i><p>لا يوجد منتوج</p></div>`; 
+        return; 
+    }
+    pl.innerHTML = "";
+    products.forEach(p => {
+        const item = document.createElement("div"); 
+        item.className = "item";
+        item.innerHTML = `
+            <div class="item-info">
+                <div class="item-name">${p.name}</div>
+                <div class="item-details">${p.price} DH · ${formatDate(new Date(p.date))}</div>
+            </div>
+            <div class="item-actions">
+                <button class="btn-danger" data-id="${p.id}" data-type="product"><i class="fas fa-trash-alt"></i> حذف</button>
+            </div>`;
+        pl.appendChild(item);
+    });
+}
+
+function renderCredits() {
+    const cl = document.getElementById("creditList");
+    if (!credits.length) { 
+        cl.innerHTML = `<div class="empty-state"><i class="fas fa-hand-holding-usd"></i><p>لا يوجد كريدي مسجل</p></div>`; 
+        return; 
+    }
+    cl.innerHTML = "";
+    credits.forEach(c => {
+        const item = document.createElement("div"); 
+        item.className = "item";
+        item.innerHTML = `
+            <div class="item-info">
+                <div class="item-name">${c.borrower} — ${c.type}</div>
+                <div class="item-details">${c.amount} DH · ${formatDate(new Date(c.date))}</div>
+            </div>
+            <div class="item-actions">
+                <button class="${c.paid ? 'btn-warning' : 'btn-success'}" data-id="${c.id}" data-type="credit" data-action="toggle">
+                    <i class="fas fa-${c.paid ? 'undo' : 'check'}"></i> ${c.paid ? 'باقي بلا خلاص' : 'كريدي تخلص'}
+                </button>
+                <button class="btn-danger" data-id="${c.id}" data-type="credit" data-action="delete">
+                    <i class="fas fa-trash-alt"></i> حذف
+                </button>
+            </div>
+            <span class="badge ${c.paid ? 'badge-paid' : 'badge-pending'}">
+                <i class="fas fa-${c.paid ? 'check-circle' : 'exclamation-circle'}"></i> ${c.paid ? 'مخلص' : 'باقي مامخلص'}
+            </span>`;
+        cl.appendChild(item);
+    });
+}
+
+function updateStats() {
+    const ts = products.reduce((s, p) => s + parseFloat(p.price), 0);
+    const tc = credits.reduce((s, c) => s + parseFloat(c.amount), 0);
+    const pc = credits.reduce((s, c) => !c.paid ? s + parseFloat(c.amount) : s, 0);
+    document.getElementById("totalSales").textContent = ts.toFixed(2) + " DH";
+    document.getElementById("totalCredits").textContent = tc.toFixed(2) + " DH";
+    document.getElementById("pendingCredits").textContent = pc.toFixed(2) + " DH";
+}
+
+// --- Event Listeners ---
+function setupFormEventListeners() {
+    document.getElementById("productForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        const productName = document.getElementById("productName").value.trim();
+        const productPrice = parseFloat(document.getElementById("productPrice").value);
+        if (productName && !isNaN(productPrice)) {
+            products.push({ id: Date.now(), name: productName, price: productPrice.toFixed(2), sold: true, date: currentDate.toISOString() });
+            saveData(); renderProducts(); updateStats(); this.reset();
+        }
+    });
+
+    document.getElementById("creditForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        const borrowerName = document.getElementById("borrowerName").value.trim();
+        const creditType = document.getElementById("creditType").value.trim();
+        const creditAmount = parseFloat(document.getElementById("creditAmount").value);
+        if (borrowerName && creditType && !isNaN(creditAmount)) {
+            credits.push({ id: Date.now(), borrower: borrowerName, type: creditType, amount: creditAmount.toFixed(2), paid: false, date: currentDate.toISOString() });
+            saveData(); renderCredits(); updateStats(); this.reset();
+        }
+    });
+
+    document.addEventListener("click", function(e) {
+        const btn = e.target.tagName === "BUTTON" ? e.target : e.target.closest("button");
+        if (!btn) return;
+
+        const id = parseInt(btn.dataset.id);
+        const type = btn.dataset.type;
+        const action = btn.dataset.action;
+
+        if (type === "product") {
+            if (confirm("حذف هذا المنتج ?")) {
+                products = products.filter(p => p.id !== id);
+                saveData(); renderProducts(); updateStats();
+            }
+        } else if (type === "credit") {
+            if (action === "toggle") {
+                credits = credits.map(c => c.id === id ? {...c, paid: !c.paid} : c);
+                saveData(); renderCredits(); updateStats();
+            } else if (action === "delete") {
+                if (confirm("حذف هذا الكريدي ?")) {
+                    credits = credits.filter(c => c.id !== id);
+                    saveData(); renderCredits(); updateStats();
+                }
+            }
+        }
+    });
+}
+
+function setupTabEventListeners() {
+    const tabs = document.querySelectorAll(".tab");
+    tabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            tabs.forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+            document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+            document.getElementById(tab.dataset.tab).classList.add("active");
+        });
+    });
+}
+
+function setupMarginInputListeners() {
+    const marginInputIds = ["yesterdayCash","todayCash","yesterdayDeler","inwiRecharge","orangeRecharge","iamRecharge","remainingInwi","remainingOrange","remainingIAM","remainingCashe"];
+    marginInputIds.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('change', () => { saveMarginInputs(); showAutoSaveNotification(); });
+            if (id.startsWith('remaining')) {
+                input.addEventListener('input', () => {
+                    const total = (parseFloat(document.getElementById("remainingInwi").value || 0) + 
+                                    parseFloat(document.getElementById("remainingOrange").value || 0) + 
+                                    parseFloat(document.getElementById("remainingIAM").value || 0));
+                    document.getElementById("totalDealersToday").textContent = `Total de Reste des 3 Dealers : ${total.toFixed(2)} DH`;
+                });
+            }
+        }
+    });
+}
+
+function showAutoSaveNotification() {
+    const status = document.getElementById("backupStatus");
+    const originalText = status.textContent;
+    status.textContent = "Sauvegarde automatique réussie - " + new Date().toLocaleTimeString();
+    status.style.color = "#22c55e";
+    setTimeout(() => { status.textContent = originalText; status.style.color = ""; }, 2000);
+}
+
+// --- PDF Export ---
+function exportToPDF() {
+    const doc = new jsPDF();
+    doc.setFontSize(18); doc.setTextColor(40);
+    
+    doc.setFontSize(12); doc.setTextColor(100);
+    doc.text(`M&M Store : ${formatDate(new Date())}`, 105, 22, { align: "center" });
+
+    // Table: Ventes
+    doc.setFontSize(14); doc.setTextColor(40); doc.text("Détail des Ventes", 14, 35);
+    doc.autoTable({ 
+        head:[["Produit","Prix","Date"]], 
+        body: products.map(p => [p.name, `${p.price} DH`, formatDate(new Date(p.date))]), 
+        startY: 40, 
+        theme: "grid" 
+    });
+
+    // Table: Crédits
+    doc.setFontSize(14); doc.text("Détail des Crédits", 14, doc.autoTable.previous.finalY + 20);
+    doc.autoTable({ 
+        head:[["Client","Type","Montant","Statut","Date"]], 
+        body: credits.map(c => [c.borrower, c.type, `${c.amount} DH`, c.paid?"Payé":"Impayé", formatDate(new Date(c.date))]), 
+        startY: doc.autoTable.previous.finalY + 25, 
+        theme: "grid" 
+    });
+
+    // Stats Section
+    const tv = products.reduce((s,p) => s + parseFloat(p.price), 0);
+    const ci = credits.reduce((s,c) => !c.paid ? s + parseFloat(c.amount) : s, 0);
+    const yc = parseFloat(document.getElementById("yesterdayCash").value) || 0;
+    const rc = parseFloat(document.getElementById("remainingCashe").value) || 0;
+    const mr = document.getElementById("marginResult").textContent;
+
+    doc.setFontSize(14); doc.text("Calcul de Marge", 14, doc.autoTable.previous.finalY + 20);
+    doc.autoTable({ 
+        body:[
+            ["Total Ventes", `${tv.toFixed(2)} DH`],
+            ["Crédits Impayés", `${ci.toFixed(2)} DH`],
+            ["Fond caisse hier", `${yc.toFixed(2)} DH`],
+            ["Reste Argent", `${rc.toFixed(2)} DH`],
+            ["Marge Calculée", mr]
+        ], 
+        startY: doc.autoTable.previous.finalY + 25, 
+        theme: "plain" 
+    });
+
+    doc.save(`rapport_commercial_${formatDate(currentDate)}.pdf`);
+    document.getElementById("backupStatus").textContent = "PDF généré avec succès";
+}
