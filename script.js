@@ -172,7 +172,7 @@ function loadMarginData() {
         const el = document.getElementById(id); 
         if (el && value !== undefined) el.value = value; 
     };
-    
+
     updateField("yesterdayCash", marginData.yesterdayCash); 
     updateField("todayCash", marginData.todayCash); 
     updateField("yesterdayDeler", marginData.yesterdayDeler);
@@ -183,7 +183,14 @@ function loadMarginData() {
     updateField("remainingOrange", marginData.remaining?.orange); 
     updateField("remainingIAM", marginData.remaining?.iam); 
     updateField("remainingCashe", marginData.remaining?.cashe);
-    
+
+    // Display totalDealersToday for the selected day
+    if (typeof marginData.totalDealersToday === "number") {
+        document.getElementById("totalDealersToday").textContent = `مجموع الباقي في الديلرات اليوم : ${marginData.totalDealersToday.toFixed(2)} DH`;
+    } else {
+        document.getElementById("totalDealersToday").textContent = "مجموع الباقي في الديلرات اليوم";
+    }
+
     if (marginData.margin !== undefined) {
         document.getElementById("marginResult").textContent = marginData.margin.toFixed(2) + " DH";
     }
